@@ -21,9 +21,10 @@ import json
 import requests	
 
 def Sig():	#Used to set up Private API calls.
+	#API keys removed for security purposes, keys are stored on local
 	userID = 'up111447887'
-	api_key = '5buowopJaCaHWQKdECauvjHfMs'
-	API_SECRET = str.encode('FawVVo9lIwVZvKdMTRghFauVQj4')
+	api_key = ''
+	API_SECRET = str.encode('')
 	nonce = str(int(time.time()))
 	message = str.encode(nonce + userID + api_key)
 	signature = hmac.new(API_SECRET, msg=message, digestmod=hashlib.sha256).hexdigest().upper()
