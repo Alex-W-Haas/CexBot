@@ -1,12 +1,12 @@
-#!/usr/bin/python
-
+#!/usr/local/bin/python3
+#Will the above file path compile correctly?
 #Bot MK II
 
 #See SimBot Mk I for more info.
 
 #Mk II seeks to add fees into account and analysis of the order book to ensure transaction go through.
 
-
+#Try to create analaysis and extrapolation using RSI
 
 
 import requests	
@@ -15,7 +15,7 @@ import hmac
 import hashlib
 import json
 
-Wallet = [1, 0]	#bitcoin and USD values
+Wallet = [1, 0]	#initail bitcoin and USD values to play with
 
 #initial values to not satisfy if statements
 SellTime = False
