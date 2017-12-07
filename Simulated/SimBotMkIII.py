@@ -1,6 +1,14 @@
 #!/usr/bin/python3
 
-#Bot MK II
+#SimBot MK III
+
+#Strategy: RSI Analysis to determine swings
+
+#RSI (Relative Strength Index) is an indication of the markets momentum oscillations.
+# Value between 0 and 100, meadian 50. If the index is high (>70), the asset has been rising
+#and will likely correct negatively, and a low index means the opposite.
+#Typically calculated over a 14-day period. may just do seven. who knows.
+#Trigger will be high RSIs.
 
 # This version includes general streamlined features, better implementation of price changes, 
 #Along with other readablilty fixes. 
@@ -11,8 +19,7 @@
 #Sell high, buy low, not the other way around.
 #any variable needing to be int or float should be converted at declaration.
 
-#CARE WHEN BUILDING, AS WILL SELL BTC 
-
+#New Parameter 'Hodl' for when current RSI near 50, not pressure to sell. 
 
 import time
 import hmac
@@ -20,31 +27,29 @@ import hashlib
 import json
 import requests	
 
-def Sig():	#Used to set up Private API calls.
-	#API keys removed for security purposes, keys are stored on local
-	userID = 'up111447887'
-	api_key = ''
-	API_SECRET = str.encode('')
-	nonce = str(int(time.time()))
-	message = str.encode(nonce + userID + api_key)
-	signature = hmac.new(API_SECRET, msg=message, digestmod=hashlib.sha256).hexdigest().upper()
-
-	return ([api_key, signature, nonce])
-
 #Initial Conditions
-Trade = 'Sell'
+Trade = 'Hodl'
 TS = 30000000000	#to avoid triggering buy order before first sell.
-StartTime = time.time()
-#Get Reference Price	
+StartTime = time.time()	
 
 while True:	#loops forever, every time as defined by the last line of the program.
 	CurrentPrice = float(json.loads(requests.get("https://cex.io/api/last_price/BTC/USD").text)['lprice'])
 	print(CurrentPrice)
 
-
+	#Calculate RSI
+	#for :
+		#if CurrentClose > PreviousClose:
+			#U += (CurrentClose - PreviousClose
+			#n += 1
+		#if CurrentClose < PreviousClose:
+			#D += (CurrentClose - PreviousClose
+			#m += 1
+	#RS = (U/n)/(D/m)
+	#RSI = 100 - (100/(1+RS))
 	#Eventually, the analysis will yield:
-	TargetPrice = 0
-	#Once this is achieved, buy and sell orders can be run.
+	RSI = 0 # Value between 0 and 100. Near 100 means time to sell, near 0 time to buy 
+		
+
 
 #Check to see if orders were completed to seitch to other trading scheme.
 	APICall = Sig()
