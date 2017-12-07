@@ -21,8 +21,8 @@ import json
 import requests	
 
 def Sig():	#Used to set up Private API calls.
-	#API keys removed for security purposes, keys are stored on local
-	userID = 'up111447887'
+	#API Key will need to be generated
+	userID = ''
 	api_key = ''
 	API_SECRET = str.encode('')
 	nonce = str(int(time.time()))
