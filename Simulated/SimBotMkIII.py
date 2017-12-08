@@ -20,8 +20,10 @@
 #any variable needing to be int or float should be converted at declaration.
 
 #New Parameter 'Hodl' for when current RSI near 50, not pressure to sell. 
+#Also add parameter to look for sell walls @ 100 marks
 
 import time
+import string
 import hmac
 import hashlib
 import json
@@ -30,93 +32,98 @@ import requests
 #Initial Conditions
 Trade = 'Hodl'
 TS = 30000000000	#to avoid triggering buy order before first sell.
-StartTime = time.time()	
+StartTime = int(time.time())
+Date = time.strftime('%Y%m%d')
+print(Date)
 
+#Use OHLCV (Open High Low Close Volume) chart which pulls the last month of data 
+#OHLCV dat is stored in a list in a list in a dict. 
+#But the content of the dict is just a string, not a nested list.
+#Fuck, this is going to get messy.
+OHLCV = json.loads(requests.get('https://cex.io/api/ohlcv/hd/20171207/BTC/USD').text)
+OneDayOHLCV = OHLCV['data1m']
+DayLists = []
+
+#I am a fucking god for making this work. 
+for i in OneDayOHLCV:	#For each damn character in the string
+	
+	if (i == 'u' or i == "'"):
+		continue	#skip the extra shit we dont need.
+
+	if i == ']':
+		List = str(List)
+		List = List.split(",")
+		if len(List) > 1:
+			DayLists.append(List)
+		List = ''
+	if i =='[':	#Check to find start of lists.
+		List = ''	#Clear the strings from the Nested Lists
+		continue
+	List += i
+#Daylists are all strings, need to be converted to ints and floats when used.
+#Daylists is, for each nested list: [Time, Open, High, Low, Close, Volume]
+
+#Initially Calculate RSI
+U = 0
+n = 0
+D = 0
+m = 0
+for k in (DayLists):
+	if float(k[4]) > float(k[1]):
+		U += float(k[4]) - float(k[1])
+		n += 1	
+	if float(k[1]) > float(k[4]):
+		D += float(k[1]) - float(k[4])
+		m += 1	
+RS = (U/n)/(D/m)
+RSI = 100 - (100/(1+RS))
+#And after every minute(?), the newest data will be added to eithr U or D and will recalcualte
+#Eventually, the analysis will yield:
+
+HighPrice = float(json.loads(requests.get('https://cex.io/api/ticker/BTC/USD').text)['bid'])
+LowPrice = float(json.loads(requests.get('https://cex.io/api/ticker/BTC/USD').text)['ask'])
+NowPrice = (HighPrice + LowPrice) / 2	#Will actually become Previous Price when called
 while True:	#loops forever, every time as defined by the last line of the program.
-	CurrentPrice = float(json.loads(requests.get("https://cex.io/api/last_price/BTC/USD").text)['lprice'])
-	print(CurrentPrice)
-
-	#Calculate RSI
-	#for :
-		#if CurrentClose > PreviousClose:
-			#U += (CurrentClose - PreviousClose
-			#n += 1
-		#if CurrentClose < PreviousClose:
-			#D += (CurrentClose - PreviousClose
-			#m += 1
-	#RS = (U/n)/(D/m)
-	#RSI = 100 - (100/(1+RS))
-	#Eventually, the analysis will yield:
-	RSI = 0 # Value between 0 and 100. Near 100 means time to sell, near 0 time to buy 
+	Tick  = int(time.time())
+	PreviousPrice = NowPrice
+	NowPrice = float(json.loads(requests.get("https://cex.io/api/last_price/BTC/USD").text)['lprice'])
+	print(NowPrice)
+#Recalculate RSI
+	if NowPrice > PreviousPrice:
+		U += NowPrice - PreviousPrice
+		n += 1
+	if NowPrice < PreviousPrice:
+		D += PreviousPrice - NowPrice
+		m += 1
+	RS = (U/n)/(D/m)
+	RSI = 100 - (100/(1+RS))
+	print(RSI)
 		
 
-
-#Check to see if orders were completed to seitch to other trading scheme.
-	APICall = Sig()
-	Parameters = {'key' : APICall[0], 'signature' : APICall[1], 'nonce' : APICall[2]}
-	OpenOrders = json.loads(requests.post('https://cex.io/api/open_orders/', data = Parameters).text)
-	print(OpenOrders)
-	if (OpenOrders == [] and Trade == 'Selling'): #Trade complete
-		Trade = 'Buy'
-		TS = 30000000000
-	if(OpenOrders ==[] and Trade == 'Buying'):
-		Trade = 'Sell'
-		TS = 30000000000
-
-#Cancel Order
-#Takes priority as it is the catalyst for the trade cycle.
-#Will only be able to cancel current active order.
-	if time.time() - TS > 10 :	#cancels after 10 seconds
-		APICall = Sig()
-		Parameters = {'key' : APICall[0], 'signature' : APICall[1], 'nonce' : APICall[2], 'id' : ID}
-		Cancel = requests.post('https://cex.io/api/cancel_order/', data = Parameters)
-		if Trade == 'Selling':	#reverts attempt same order again.
-			Trade = 'Sell'
-		if Trade == 'Buying':
-			Trade = 'Buy'
-		TS = 30000000000
-
 #Place Sell Order
-#Trigger for a profit cycle	
-#How to calculate reasonable sell order?
 
-	if (Trade == 'Sell' and TargetPrice <= CurrentPrice - 30): #Will sell current price is $30 over expected, should break even
-		APICall = Sig()
-		Parameters = {'key' : APICall[0], 'signature' : APICall[1], 'nonce' : APICall[2], 'type' : 'sell', 'amount' : .01, 'price': CurrentPrice + 100}
-		SellOrder = json.loads(requests.post('https://cex.io/api/place_order/BTC/USD', data = Parameters).text)
-		#print(SellOrder)
-		ID = SellOrder['id']
-		TS = float(SellOrder['time'])
-		SellPrice = float(SellOrder['price'])
-		Trade = 'Selling' #Switch to looking for buy
+	if (RSI > 75 and Trade == 'Sell'):
+		SellTotal = requests.post('https://cex.io/api/convert/BTC/USD', data = {'amnt': .01})
+		SellPrice = (float(LastPrice['lprice']))
+		#print(SellPrice)
+		SellTS = time.time()
+		sell_data = json.loads(SellTotal.text)
+		print('Sell')
+		Wallet[1] += float(sell_data['amnt']) * .998
+		Wallet[0] -= .01
+		print(Wallet)
+		Trade = 'Buy'
 
-
-		APICall = Sig()
-		Parameters = {'key' : APICall[0], 'signature' : APICall[1], 'nonce' : APICall[2]}
-		Account = json.loads(requests.post('https://cex.io/api/balance/', data = Parameters).text)
-		print(Account['BTC']['available'], Account['USD']['available'])
-
-
-#Place Buy Order 
-#Only triggered when a sell order is made or when the previous buy order is cancelled
-
-	if (Trade == 'Buy' and SellPrice > CurrentPrice + 30):
-		APICall = Sig()
-		Parameters = {'key' : APICall[0], 'signature' : APICall[1], 'nonce' : APICall[2]}
-		Account = json.loads(requests.post('https://cex.io/api/balance/', data = Parameters).text)
-		Fiat = float(Account['USD']['available'])
-		BTC = Fiat / float(json.loads(requests.post('https://cex.io/api/convert/BTC/USD', data = {'amnt' : 1}).text)['amnt'])
-		Parameters = {'key' : APICall[0], 'signature' : APICall[1], 'nonce' : APICall[2], 'type' : 'buy', 'amount': BTC , 'price': CurrentPrice - 1}
-		BuyOrder = json.loads(requests.post('https://cex.io/api/place_order/BTC/USD', data = Parameters).text)
-		#print(BuyOrder)
-		TS = float(BuyOrder['time'])
-		ID = BuyOrder['id']
-		Trade = 'Buying'
-
-		APICall = Sig()
-		Parameters = {'key' : APICall[0], 'signature' : APICall[1], 'nonce' : APICall[2]}
-		Account = json.loads(requests.post('https://cex.io/api/balance/', data = Parameters).text)
-		print(Account['BTC']['available'], Account['USD']['available'])
+#Place Buy Order 											or concede loss
+	if ((RSI > 30 or (time.time() - SellTS > 200)) and Trade == 'Buy' ):
+		BuyTotal = requests.post('https://cex.io/api/convert/BTC/USD', data = {'amnt': 1})
+		sell_data = json.loads(BuyTotal.text)
+		print('Buy')
+		BTC = Wallet[1] / sell_data['amnt'] *.998
+		Wallet[0] += BTC
+		Wallet[1] = 0
+		print(Wallet)
+		Trade = 'Sell'
 
 
 
