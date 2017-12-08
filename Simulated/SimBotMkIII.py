@@ -41,7 +41,7 @@ print(Date)
 #But the content of the dict is just a string, not a nested list.
 #Fuck, this is going to get messy.
 OHLCV = json.loads(requests.get('https://cex.io/api/ohlcv/hd/20171207/BTC/USD').text)
-OneDayOHLCV = OHLCV['data1m']
+OneDayOHLCV = OHLCV['data1d']
 DayLists = []
 
 #I am a fucking god for making this work. 
